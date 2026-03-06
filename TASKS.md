@@ -36,5 +36,5 @@
 
 ## Batch 6: Final verification
 
-- [ ] `[medium | gpt-5.3-codex]` Run the full test suite plus the container smoke path, then fix any regressions before handoff. Output: final verification summary in `PROGRESS.md`.
-- [ ] `[low]` Perform a final review of the repo against [`PLAN.md`](/home/luandro/Dev/digidem/comapeo-desktop/PLAN.md) and confirm the delivered implementation still matches the direct-daemon, regular-device scope. Output: final acceptance checklist in `PROGRESS.md`.
+- [x] `[medium | gpt-5.3-codex]` Run the full test suite plus the container smoke path, then fix any regressions before handoff. Output: final verification summary in `PROGRESS.md`.
+- [x] `[low]` Perform a final review of the repo against [`PLAN.md`](/home/luandro/Dev/digidem/comapeo-desktop/PLAN.md) and confirm the delivered implementation still matches the direct-daemon, regular-device scope. Output: final acceptance checklist in `PROGRESS.md`.

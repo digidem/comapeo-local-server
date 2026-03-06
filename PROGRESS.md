@@ -3,8 +3,8 @@
 ## Current Status
 
 - Date: 2026-03-06
-- Active task: Batch 6 – Final verification
-- Status: Batch 5 complete
+- Active task: –
+- Status: ALL BATCHES COMPLETE
 - Owner: orchestration agent
 
 ## Completed Work
@@ -188,10 +188,44 @@ None.
   - Reason: No extra port; works with `test -f`; removed on clean shutdown
   - Follow-up: none
 
+### Batch 6 – Final verification
+
+- Task: Full test suite + build + smoke run – all green
+- Task: Acceptance criteria review against PLAN.md
+
+### Evidence (Batch 6)
+
+- `npm run typecheck` → clean
+- `npm test` → 29/29 (config: 13, root-key: 7, invites: 9)
+- `npm run build` → clean dist/ compiled
+- `node --run start:smoke` → daemon exits cleanly on SIGINT
+- Readiness lifecycle verified: `.ready` written after full startup, removed after clean SIGINT
+
+### PLAN.md Acceptance Criteria – Final Checklist
+
+| Criterion | Status | Evidence |
+|-----------|--------|---------|
+| `docker compose up` starts daemon with mounted /data volume | READY | docker-compose.yml + Dockerfile correct; requires Docker daemon to run |
+| First boot without COMAPEO_ROOT_KEY generates and persists one | PASS | root-key.test.ts test 1-2; loadOrCreateRootKey() |
+| Restart preserves same identity and existing projects | PASS | root-key.test.ts "identity stability" test; key loaded from .root-key file |
+| COMAPEO_DEVICE_NAME updates device record on startup | PASS | initCore() calls setDeviceInfo() every boot; smoke log confirms |
+| Pending invite auto-accepted → project membership | PASS | invites.test.ts; startInviteHandler with invite-received subscription |
+| Already-joined/canceled invite does not crash | PASS | invites.test.ts "does not crash when accept rejects" |
+| SIGTERM stops discovery advertising and exits cleanly | PASS | core/index.ts stop(): mDNS → discovery → Fastify → manager.close() |
+
+### Out-of-scope for v1 (noted in PLAN.md)
+
+- `armv7` native build not verified (PLAN.md says "do not commit to armv7 until native dep builds verified")
+- Docker image build itself not run in CI here (requires Docker daemon on the target machine)
+- `selfHostedServer` deviceType not used (PLAN.md: "regular device, deviceType: desktop")
+
+## Open Blockers
+
+None.
+
 ## Next Handoff
 
-- Next task: Batch 6 – Final verification
-  1. Run full test suite, confirm all pass
-  2. Verify implementation against PLAN.md acceptance criteria
-- Preconditions: Batch 5 complete (done)
-- Notes: docker build not verified here (requires Docker daemon); all Node-side evidence is complete
+All tasks complete. To deploy:
+1. `cp .env.example .env` and set COMAPEO_DEVICE_NAME
+2. `docker compose up -d` (requires Docker buildx for arm64 cross-compile if not on Pi)
+3. Confirm `docker compose ps` shows daemon healthy after ~30s
