@@ -3,6 +3,7 @@ import debug from 'debug'
 import { loadConfig } from '../config/index.js'
 import { loadOrCreateRootKey } from '../config/root-key.js'
 import { initCore } from '../core/index.js'
+import { startInviteHandler } from './invites.js'
 
 const log = debug('comapeo:daemon')
 
@@ -21,6 +22,12 @@ async function main() {
 	const core = await initCore(config, rootKey)
 	log('Core ready – daemon is fully started')
 
+	// ── Invite handler ────────────────────────────────────────────────────────
+	const inviteHandler = startInviteHandler(
+		core.manager.invite,
+		config.autoAcceptInvites,
+	)
+
 	// Signal readiness to the healthcheck (Batch 5 will formalise this).
 	process.stdout.write('READY\n')
 
@@ -28,6 +35,7 @@ async function main() {
 	await new Promise<void>((resolve) => {
 		async function shutdown(signal: string) {
 			log('Received %s, shutting down', signal)
+			inviteHandler.stop()
 			await core.stop()
 			resolve()
 		}

@@ -31,6 +31,8 @@ const DEFAULT_CONFIG_PATH = fileURLToPath(
 )
 
 export type CoreHandle = {
+	/** The initialized MapeoManager instance. */
+	manager: MapeoManager
 	/** Stop all services and close resources cleanly. */
 	stop: () => Promise<void>
 }
@@ -154,5 +156,5 @@ export async function initCore(
 		log('Core stopped cleanly')
 	}
 
-	return { stop }
+	return { manager, stop }
 }

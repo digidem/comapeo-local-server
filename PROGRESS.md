@@ -3,8 +3,8 @@
 ## Current Status
 
 - Date: 2026-03-06
-- Active task: Batch 4 – Invite automation
-- Status: Batch 3 complete
+- Active task: Batch 5 – Docker and compose
+- Status: Batch 4 complete
 - Owner: orchestration agent
 
 ## Completed Work
@@ -127,11 +127,35 @@ None.
 - Decision: Shutdown errors are non-fatal (logged but don't throw)
   - Reason: Best-effort cleanup; process should exit even if one step fails
 
+### Batch 4 – Invite automation
+
+- Task: startInviteHandler subscribes to invite-received, auto-accepts pending invites
+- Task: Boot-time reconciliation via inviteApi.getMany() on startup
+- Task: Idempotent – non-pending states skipped; accept() errors logged, not thrown
+- Task: Batch 4 review – 9 unit tests + smoke log confirms "Auto-accept invites enabled"
+- Commit: feat: implement invite auto-accept with boot-time reconciliation
+
+### Evidence (Batch 4)
+
+- Commands run:
+  - `npm test` → 29/29 pass (13 config + 7 root-key + 9 invites)
+  - `npm run typecheck` → clean
+  - Smoke: `comapeo:invites Auto-accept invites enabled` logged before READY
+- Test coverage: subscription, boot reconciliation, state filtering (non-pending skipped),
+  accept rejection handling, stop() listener removal
+
+### Files Changed (Batch 4)
+
+- `src/daemon/invites.ts` – startInviteHandler: subscribe + reconcile + stop
+- `src/core/index.ts` – CoreHandle now exposes manager field
+- `src/daemon/index.ts` – wired startInviteHandler, stop() called on shutdown
+- `test/invites.test.ts` – 9 unit tests with EventEmitter stub
+
 ## Next Handoff
 
-- Next task: Batch 4 – Invite automation
-  1. Subscribe to manager.invite events, auto-accept when COMAPEO_AUTO_ACCEPT_INVITES=true
-  2. Boot-time reconciliation of pending invites
-  3. Idempotent handling of joined/canceled/failed invites
-- Preconditions: Batch 3 complete (done)
-- Notes: See node_modules/@comapeo/core/src/invite/invite-api.js for InviteApi events and accept() signature
+- Next task: Batch 5 – Docker and compose
+  1. Multi-stage Dockerfile with native dep build tools for arm64/amd64
+  2. docker-compose.yml with /data volume, host network, restart policy
+  3. Real healthcheck based on READY stdout signal
+- Preconditions: Batch 4 complete (done)
+- Notes: Daemon writes "READY\n" to stdout after full startup – use that for healthcheck

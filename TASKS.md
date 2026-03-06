@@ -23,9 +23,9 @@
 
 ## Batch 4: Invite automation
 
-- [ ] `[high | gpt-5.3-codex | use subagents for planning, implementation, and review]` Implement invite handling directly against `manager.invite`, not a recreated IPC client layer. Subscribe to invite events and auto-accept new invites when `COMAPEO_AUTO_ACCEPT_INVITES=true`. Inputs: [`node_modules/@comapeo/core/src/invite/invite-api.js`](/home/luandro/Dev/digidem/comapeo-desktop/node_modules/@comapeo/core/src/invite/invite-api.js). Output: invite daemon module and tests for the normal accept path.
-- [ ] `[medium | gpt-5.3-codex]` Add boot-time reconciliation so any existing `pending` invites are accepted on startup, and ensure already-joined, canceled, and failed invites are handled idempotently. Output: tests covering reconciliation and failure cases.
-- [ ] `[low]` Review Batch 4 by exercising invite acceptance end to end and recording joined project IDs and failure behavior in `PROGRESS.md`.
+- [x] `[high | gpt-5.3-codex | use subagents for planning, implementation, and review]` Implement invite handling directly against `manager.invite`, not a recreated IPC client layer. Subscribe to invite events and auto-accept new invites when `COMAPEO_AUTO_ACCEPT_INVITES=true`. Inputs: [`node_modules/@comapeo/core/src/invite/invite-api.js`](/home/luandro/Dev/digidem/comapeo-desktop/node_modules/@comapeo/core/src/invite/invite-api.js). Output: invite daemon module and tests for the normal accept path.
+- [x] `[medium | gpt-5.3-codex]` Add boot-time reconciliation so any existing `pending` invites are accepted on startup, and ensure already-joined, canceled, and failed invites are handled idempotently. Output: tests covering reconciliation and failure cases.
+- [x] `[low]` Review Batch 4 by exercising invite acceptance end to end and recording joined project IDs and failure behavior in `PROGRESS.md`.
 
 ## Batch 5: Docker and compose
 
