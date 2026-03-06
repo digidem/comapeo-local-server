@@ -4,6 +4,7 @@ import { loadConfig } from '../config/index.js'
 import { loadOrCreateRootKey } from '../config/root-key.js'
 import { initCore } from '../core/index.js'
 import { startInviteHandler } from './invites.js'
+import { markReady, clearReady } from './ready.js'
 
 const log = debug('comapeo:daemon')
 
@@ -28,13 +29,15 @@ async function main() {
 		config.autoAcceptInvites,
 	)
 
-	// Signal readiness to the healthcheck (Batch 5 will formalise this).
+	// Signal readiness: stdout marker for smoke tests + file marker for Docker healthcheck.
+	markReady(config.dataDir)
 	process.stdout.write('READY\n')
 
 	// ── Signal handling ───────────────────────────────────────────────────────
 	await new Promise<void>((resolve) => {
 		async function shutdown(signal: string) {
 			log('Received %s, shutting down', signal)
+			clearReady(config.dataDir)
 			inviteHandler.stop()
 			await core.stop()
 			resolve()

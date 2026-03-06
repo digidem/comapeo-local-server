@@ -3,8 +3,8 @@
 ## Current Status
 
 - Date: 2026-03-06
-- Active task: Batch 5 – Docker and compose
-- Status: Batch 4 complete
+- Active task: Batch 6 – Final verification
+- Status: Batch 5 complete
 - Owner: orchestration agent
 
 ## Completed Work
@@ -151,11 +151,47 @@ None.
 - `src/daemon/index.ts` – wired startInviteHandler, stop() called on shutdown
 - `test/invites.test.ts` – 9 unit tests with EventEmitter stub
 
+### Batch 5 – Docker and compose
+
+- Task: Multi-stage Dockerfile with native dep handling (builder compiles, runtime copies)
+- Task: docker-compose.yml: host network, /data volume, env vars (was already complete)
+- Task: Real healthcheck: daemon writes /data/.ready; HEALTHCHECK CMD test -f /data/.ready
+- Task: tsconfig.build.json for clean production build (src only → dist/)
+- Task: Compiled dist/ smoke-verified: FOUND .ready, clean shutdown
+- Commit: feat: production Dockerfile with native-dep build, readiness file healthcheck
+
+### Evidence (Batch 5)
+
+- Commands run:
+  - `npm run build` → clean, dist/config + dist/core + dist/daemon compiled
+  - `node dist/daemon/index.js` smoke → FOUND .ready file, all logs correct
+  - `npm test` → 29/29 pass
+  - `npm run typecheck` → clean
+- Healthcheck confirmed: .ready written after mDNS advertise + invite handler start
+- Architecture: native modules pre-compiled in builder, copied to slim runtime
+
+### Files Changed (Batch 5)
+
+- `Dockerfile` – proper multi-stage; build tools only in builder; prune dev deps;
+  HEALTHCHECK uses `test -f /data/.ready`; CMD is `node dist/daemon/index.js`
+- `tsconfig.build.json` – compiles src/ only into dist/
+- `package.json` – build script uses tsconfig.build.json; added start:prod
+- `src/daemon/ready.ts` – markReady(dataDir)/clearReady(dataDir)
+- `src/daemon/index.ts` – calls markReady after startup, clearReady in shutdown
+
+### Decisions (Batch 5)
+
+- Decision: Build tools only in builder stage; copy pre-compiled node_modules to runtime
+  - Reason: Avoids toolchain in the final image; native addons only compile once
+  - Follow-up: If arm64 cross-compile issues arise, consider --platform flag in FROM
+- Decision: Readiness file at {dataDir}/.ready rather than HTTP endpoint
+  - Reason: No extra port; works with `test -f`; removed on clean shutdown
+  - Follow-up: none
+
 ## Next Handoff
 
-- Next task: Batch 5 – Docker and compose
-  1. Multi-stage Dockerfile with native dep build tools for arm64/amd64
-  2. docker-compose.yml with /data volume, host network, restart policy
-  3. Real healthcheck based on READY stdout signal
-- Preconditions: Batch 4 complete (done)
-- Notes: Daemon writes "READY\n" to stdout after full startup – use that for healthcheck
+- Next task: Batch 6 – Final verification
+  1. Run full test suite, confirm all pass
+  2. Verify implementation against PLAN.md acceptance criteria
+- Preconditions: Batch 5 complete (done)
+- Notes: docker build not verified here (requires Docker daemon); all Node-side evidence is complete

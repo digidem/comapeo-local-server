@@ -17,8 +17,9 @@
 	},
 	"scripts": {
 		"start": "node --import tsx/esm src/daemon/index.ts",
+		"start:prod": "node dist/daemon/index.js",
 		"start:smoke": "node --import tsx/esm scripts/smoke.ts",
-		"build": "tsc",
+		"build": "tsc -p tsconfig.build.json",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
