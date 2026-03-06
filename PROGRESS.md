@@ -3,8 +3,8 @@
 ## Current Status
 
 - Date: 2026-03-06
-- Active task: Batch 2 – Config and persistence
-- Status: Batch 1 complete
+- Active task: Batch 3 – Core bootstrap and lifecycle
+- Status: Batch 2 complete
 - Owner: orchestration agent
 
 ## Completed Work
@@ -64,11 +64,35 @@
 
 None.
 
+### Batch 2 – Config and persistence
+
+- Task: Full valibot-based env parsing/validation for all 7 env vars
+- Task: Root-key generation and file persistence with env override support
+- Task: Batch 2 review – identity stability confirmed across restarts
+- Commit: feat: implement valibot config validation and root-key persistence
+
+### Evidence (Batch 2)
+
+- Commands run:
+  - `npm test` → 20/20 pass (13 config + 7 root-key)
+  - `npm run typecheck` → clean
+  - `node --run start:smoke` → boots and exits cleanly
+- Tests: all passed
+- Result: green
+
+### Files Changed (Batch 2)
+
+- `src/config/index.ts` – full valibot schema, loadConfig(env?) with error wrapping
+- `src/config/root-key.ts` – loadOrCreateRootKey(), file persistence, env override
+- `test/config.test.ts` – 13 tests covering all env vars and validation
+- `test/root-key.test.ts` – 7 tests: first-run, persistence, override, corruption, mkdir
+
 ## Next Handoff
 
-- Next task: Batch 2 – Config and persistence
-  1. Full valibot-based env parsing and validation (all 7 env vars)
-  2. Root-key generation and file persistence under COMAPEO_DATA_DIR
-  3. Identity stability across restarts
-- Preconditions: Batch 1 complete (done)
-- Notes: See src/main/app.ts loadRootKey() in comapeo-desktop for reference on key generation
+- Next task: Batch 3 – Core bootstrap and lifecycle
+  1. MapeoManager bootstrap from src/services/core.ts (no Electron/utilityProcess)
+  2. Storage directory initialization
+  3. setDeviceInfo on startup
+  4. Graceful SIGTERM/SIGINT shutdown
+- Preconditions: Batch 2 complete (done)
+- Notes: Reference src/services/core.ts in comapeo-desktop for MapeoManager init pattern; do not carry over sodium monkey-patch unless needed

@@ -9,9 +9,9 @@
 
 ## Batch 2: Config and persistence
 
-- [ ] `[medium | gpt-5.3-codex]` Implement env parsing and validation for `COMAPEO_DEVICE_NAME`, `COMAPEO_DATA_DIR`, `COMAPEO_ROOT_KEY`, `COMAPEO_AUTO_ACCEPT_INVITES`, `COMAPEO_DEVICE_TYPE`, `ONLINE_STYLE_URL`, and `LOG_LEVEL`. Output: typed config module and unit tests for valid and invalid env combinations.
-- [ ] `[medium | gpt-5.3-codex]` Implement first-run root-key generation and persistence in the mounted data directory, with env override support when `COMAPEO_ROOT_KEY` is present. Inputs: [`src/main/app.ts`](/home/luandro/Dev/digidem/comapeo-desktop/src/main/app.ts). Output: persistence module, tests for first run and restart reuse, and notes in `PROGRESS.md`.
-- [ ] `[low]` Review Batch 2 by running the config and persistence tests and confirming identity is stable across restarts. Output: test results in `PROGRESS.md`.
+- [x] `[medium | gpt-5.3-codex]` Implement env parsing and validation for `COMAPEO_DEVICE_NAME`, `COMAPEO_DATA_DIR`, `COMAPEO_ROOT_KEY`, `COMAPEO_AUTO_ACCEPT_INVITES`, `COMAPEO_DEVICE_TYPE`, `ONLINE_STYLE_URL`, and `LOG_LEVEL`. Output: typed config module and unit tests for valid and invalid env combinations.
+- [x] `[medium | gpt-5.3-codex]` Implement first-run root-key generation and persistence in the mounted data directory, with env override support when `COMAPEO_ROOT_KEY` is present. Inputs: [`src/main/app.ts`](/home/luandro/Dev/digidem/comapeo-desktop/src/main/app.ts). Output: persistence module, tests for first run and restart reuse, and notes in `PROGRESS.md`.
+- [x] `[low]` Review Batch 2 by running the config and persistence tests and confirming identity is stable across restarts. Output: test results in `PROGRESS.md`.
 
 ## Batch 3: Core bootstrap and lifecycle
 
