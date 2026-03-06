@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs'
+import { accessSync, mkdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -113,6 +113,16 @@ export async function initCore(
 		discoveryPort,
 	)
 
+	// Check for avahi conflict before starting ciao
+	try {
+		accessSync('/run/avahi-daemon/pid')
+		log('WARNING: avahi-daemon appears to be running (/run/avahi-daemon/pid exists). ' +
+			'This may conflict with @homebridge/ciao mDNS advertising on port 5353. ' +
+			'Consider disabling avahi: sudo systemctl disable --now avahi-daemon')
+	} catch {
+		// avahi not running, no conflict
+	}
+
 	const responder = ciao.getResponder()
 
 	const service = responder.createService({
@@ -133,14 +143,14 @@ export async function initCore(
 		if (stopCalled) return
 		stopCalled = true
 
-		log('Stopping mDNS responder')
-		await responder.shutdown().catch((err) => {
-			log('mDNS responder shutdown error (non-fatal):', err)
-		})
-
 		log('Stopping peer discovery server')
 		await manager.stopLocalPeerDiscoveryServer().catch((err) => {
 			log('Peer discovery stop error (non-fatal):', err)
+		})
+
+		log('Stopping mDNS responder')
+		await responder.shutdown().catch((err) => {
+			log('mDNS responder shutdown error (non-fatal):', err)
 		})
 
 		log('Stopping Fastify')
