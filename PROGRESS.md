@@ -3,8 +3,8 @@
 ## Current Status
 
 - Date: 2026-03-06
-- Active task: Batch 3 – Core bootstrap and lifecycle
-- Status: Batch 2 complete
+- Active task: Batch 4 – Invite automation
+- Status: Batch 3 complete
 - Owner: orchestration agent
 
 ## Completed Work
@@ -87,12 +87,51 @@ None.
 - `test/config.test.ts` – 13 tests covering all env vars and validation
 - `test/root-key.test.ts` – 7 tests: first-run, persistence, override, corruption, mkdir
 
+### Batch 3 – Core bootstrap and lifecycle
+
+- Task: MapeoManager bootstrap (no Electron/utilityProcess/@sentry)
+- Task: Storage directory initialization (sqlite-dbs, core-storage, maps)
+- Task: setDeviceInfo on startup
+- Task: Graceful SIGTERM/SIGINT shutdown (mDNS → discovery → Fastify → manager.close)
+- Task: Batch 3 review – confirmed full startup/shutdown cycle via smoke run
+- Commit: feat: implement core bootstrap, storage init, device info, graceful shutdown
+
+### Evidence (Batch 3)
+
+- Commands run:
+  - Full manual smoke with DEBUG=comapeo:* → complete startup + clean shutdown log
+  - `npm test` → 20/20 pass
+  - `npm run typecheck` → clean
+- Startup sequence confirmed:
+  1. Storage dirs created
+  2. MapeoManager initialized
+  3. Device info set (name + deviceType)
+  4. Local peer discovery started (TCP server)
+  5. mDNS service advertised via ciao
+  6. "READY" written to stdout
+  7. On SIGINT: mDNS shutdown → discovery stop → Fastify stop → manager.close
+  8. "Core stopped cleanly" / "Daemon stopped cleanly"
+
+### Files Changed (Batch 3)
+
+- `src/core/index.ts` – full MapeoManager bootstrap, storage init, discovery, shutdown
+- `src/daemon/index.ts` – wired to initCore + loadOrCreateRootKey, READY signal
+
+### Decisions (Batch 3)
+
+- Decision: Use createRequire instead of import.meta.resolve for drizzle migrations path
+  - Reason: tsx resolves import.meta.resolve to index.jsx file not the directory; createRequire is stable
+  - Follow-up: none
+- Decision: defaultIsArchiveDevice=true preserved from desktop reference
+  - Reason: PLAN.md explicitly requires it
+- Decision: Shutdown errors are non-fatal (logged but don't throw)
+  - Reason: Best-effort cleanup; process should exit even if one step fails
+
 ## Next Handoff
 
-- Next task: Batch 3 – Core bootstrap and lifecycle
-  1. MapeoManager bootstrap from src/services/core.ts (no Electron/utilityProcess)
-  2. Storage directory initialization
-  3. setDeviceInfo on startup
-  4. Graceful SIGTERM/SIGINT shutdown
-- Preconditions: Batch 2 complete (done)
-- Notes: Reference src/services/core.ts in comapeo-desktop for MapeoManager init pattern; do not carry over sodium monkey-patch unless needed
+- Next task: Batch 4 – Invite automation
+  1. Subscribe to manager.invite events, auto-accept when COMAPEO_AUTO_ACCEPT_INVITES=true
+  2. Boot-time reconciliation of pending invites
+  3. Idempotent handling of joined/canceled/failed invites
+- Preconditions: Batch 3 complete (done)
+- Notes: See node_modules/@comapeo/core/src/invite/invite-api.js for InviteApi events and accept() signature

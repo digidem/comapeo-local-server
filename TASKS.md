@@ -15,11 +15,11 @@
 
 ## Batch 3: Core bootstrap and lifecycle
 
-- [ ] `[high | gpt-5.3-codex | use subagents for planning, implementation, and review]` Extract a pure Node bootstrap around `MapeoManager` based on [`src/services/core.ts`](/home/luandro/Dev/digidem/comapeo-desktop/src/services/core.ts), removing Electron-only transport, `utilityProcess`, and `@sentry/electron`. Output: daemon bootstrap module and a short architecture summary in `PROGRESS.md`.
-- [ ] `[medium | gpt-5.3-codex]` Create startup directory initialization for database, core storage, maps, and any persisted metadata under `COMAPEO_DATA_DIR`. Output: storage bootstrap tests and path layout documentation in `PROGRESS.md`.
-- [ ] `[medium | gpt-5.3-codex]` Set device info on startup from env using `manager.setDeviceInfo({ name, deviceType: 'desktop' })`, preserving archive-device defaults unless testing proves a change is needed. Output: startup behavior test or smoke evidence in `PROGRESS.md`.
-- [ ] `[high | gpt-5.3-codex | use subagents for planning, implementation, and review]` Design and implement graceful shutdown for SIGTERM and SIGINT, including discovery cleanup and any manager/project resource cleanup required to avoid state corruption. Output: shutdown design note, implementation, and smoke-test evidence in `PROGRESS.md`.
-- [ ] `[low]` Review Batch 3 by running the daemon locally, confirming startup, device info write, and clean termination. Output: review notes in `PROGRESS.md`.
+- [x] `[high | gpt-5.3-codex | use subagents for planning, implementation, and review]` Extract a pure Node bootstrap around `MapeoManager` based on [`src/services/core.ts`](/home/luandro/Dev/digidem/comapeo-desktop/src/services/core.ts), removing Electron-only transport, `utilityProcess`, and `@sentry/electron`. Output: daemon bootstrap module and a short architecture summary in `PROGRESS.md`.
+- [x] `[medium | gpt-5.3-codex]` Create startup directory initialization for database, core storage, maps, and any persisted metadata under `COMAPEO_DATA_DIR`. Output: storage bootstrap tests and path layout documentation in `PROGRESS.md`.
+- [x] `[medium | gpt-5.3-codex]` Set device info on startup from env using `manager.setDeviceInfo({ name, deviceType: 'desktop' })`, preserving archive-device defaults unless testing proves a change is needed. Output: startup behavior test or smoke evidence in `PROGRESS.md`.
+- [x] `[high | gpt-5.3-codex | use subagents for planning, implementation, and review]` Design and implement graceful shutdown for SIGTERM and SIGINT, including discovery cleanup and any manager/project resource cleanup required to avoid state corruption. Output: shutdown design note, implementation, and smoke-test evidence in `PROGRESS.md`.
+- [x] `[low]` Review Batch 3 by running the daemon locally, confirming startup, device info write, and clean termination. Output: review notes in `PROGRESS.md`.
 
 ## Batch 4: Invite automation
 

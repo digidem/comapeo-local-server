@@ -1,32 +1,42 @@
 import debug from 'debug'
 
 import { loadConfig } from '../config/index.js'
+import { loadOrCreateRootKey } from '../config/root-key.js'
+import { initCore } from '../core/index.js'
 
 const log = debug('comapeo:daemon')
 
 async function main() {
 	log('Starting CoMapeo headless daemon')
 
+	// ── Config ────────────────────────────────────────────────────────────────
 	const config = loadConfig()
-
 	log('Config loaded: device=%s dataDir=%s', config.deviceName, config.dataDir)
 
-	// Core bootstrap (Batch 3) and invite handling (Batch 4) will be wired here.
+	// ── Root key ──────────────────────────────────────────────────────────────
+	const rootKey = loadOrCreateRootKey(config.dataDir, config.rootKey)
+	log('Root key ready')
 
-	log('Daemon ready')
+	// ── Core bootstrap ────────────────────────────────────────────────────────
+	const core = await initCore(config, rootKey)
+	log('Core ready – daemon is fully started')
 
-	// Keep the process alive until a signal is received.
+	// Signal readiness to the healthcheck (Batch 5 will formalise this).
+	process.stdout.write('READY\n')
+
+	// ── Signal handling ───────────────────────────────────────────────────────
 	await new Promise<void>((resolve) => {
-		function shutdown(signal: string) {
+		async function shutdown(signal: string) {
 			log('Received %s, shutting down', signal)
+			await core.stop()
 			resolve()
 		}
 
-		process.once('SIGTERM', () => shutdown('SIGTERM'))
-		process.once('SIGINT', () => shutdown('SIGINT'))
+		process.once('SIGTERM', () => void shutdown('SIGTERM'))
+		process.once('SIGINT', () => void shutdown('SIGINT'))
 	})
 
-	log('Daemon stopped')
+	log('Daemon stopped cleanly')
 }
 
 main().catch((err) => {
