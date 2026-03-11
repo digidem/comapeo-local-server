@@ -379,3 +379,19 @@ All tasks complete. To deploy:
   - `npm run typecheck` → clean
 - Decision: keep this as part of the local reproducible `@comapeo/core` patch set in this repo, since the remaining stall is still dependency behavior rather than headless daemon orchestration
 - Next handoff: rerun the daemon and confirm the remote sync state no longer sticks at `initial(... wanted=1)` once live peer config/blobIndex bitfields arrive
+
+- Task: write detailed sync-exchange investigation handoff report
+- Status: complete
+- Reason: exchange is still not completing, and the investigation now spans multiple daemon changes, dependency patches, desktop comparisons, runtime logs, and unresolved hypotheses; a standalone report is needed so another developer can continue without reconstructing the context
+- Changes:
+  - added `SYNC_EXCHANGE_INVESTIGATION.md`
+  - documented:
+    - investigation timeline and commit history
+    - comparison with `/home/luandro/Dev/digidem/comapeo-desktop`
+    - current runtime symptoms
+    - local `@comapeo/core` patches already attempted
+    - current hypotheses and next recommended debugging steps
+- Checks run:
+  - report reviewed locally against current `TASKS.md`, `PROGRESS.md`, daemon code, patch script, and desktop exchange route
+- Decision: keep the report focused on handoff quality rather than adding more speculative code changes while the root cause is still unresolved
+- Next handoff: next developer should begin with `SYNC_EXCHANGE_INVESTIGATION.md`, then instrument per-namespace presync accounting to identify which specific initial namespace still contributes the persistent `wanted=1`
