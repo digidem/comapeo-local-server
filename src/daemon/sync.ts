@@ -12,9 +12,9 @@ type SyncableProject = {
 type SyncManager = Pick<MapeoManager, 'listProjects' | 'getProject'>
 
 /**
- * Ensure full data sync is enabled for every joined project on this device.
+ * Ensure full data sync is enabled for every active project on this device.
  *
- * Re-running this is safe and keeps newly joined projects synced without
+ * Re-running this is safe and keeps joining/newly joined projects synced without
  * depending on any UI exchange screen lifecycle.
  */
 export async function enableSyncForJoinedProjects(
@@ -28,7 +28,10 @@ export async function enableSyncForJoinedProjects(
 	}
 
 	for (const projectInfo of projects) {
-		if (projectInfo.status !== 'joined') {
+		if (
+			projectInfo.status !== 'joined' &&
+			projectInfo.status !== 'joining'
+		) {
 			log(
 				'Project %s is in status %s; skipping sync enable',
 				projectInfo.projectId,
@@ -41,6 +44,10 @@ export async function enableSyncForJoinedProjects(
 			projectInfo.projectId,
 		)) as SyncableProject
 		project.$sync.start()
-		log('Enabled sync for project %s', projectInfo.projectId)
+		log(
+			'Enabled sync for project %s with status %s',
+			projectInfo.projectId,
+			projectInfo.status,
+		)
 	}
 }

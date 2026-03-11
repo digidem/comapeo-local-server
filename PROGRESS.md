@@ -318,3 +318,14 @@ All tasks complete. To deploy:
   - `npm run typecheck` → clean
 - Decision: keep sync enablement as an idempotent daemon concern rather than mirroring the desktop exchange-screen lifecycle, so the headless node remains ready to exchange whenever any peer starts
 - Next handoff: if the daemon later gains project creation or leave automation outside invite acceptance, call the same joined-project reconciliation after those flows too
+
+- Follow-up fix: widen auto-sync reconciliation to `joining` projects as well as `joined`
+- Status: complete
+- Reason: live sync logs still showed `namespace data is disabled` / `namespace blob is disabled`, which means the project remained in presync; newly accepted projects can remain in `joining` until project settings arrive, but they still need `$sync.start()` immediately
+- Changes:
+  - updated `src/daemon/sync.ts` to enable sync for both `joining` and `joined` projects
+  - updated `test/sync.test.ts` to verify `joining` projects also get `$sync.start()`
+- Checks run:
+  - `npm test -- test/sync.test.ts test/invites.test.ts`
+  - `npm run typecheck`
+- Decision: treat any non-left active project (`joining` or `joined`) as eligible for always-on exchange
