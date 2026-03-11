@@ -115,20 +115,45 @@ export function patchCoreSyncStateSource(source) {
 	}
 
 	// Patch getState() so cores without an attached local Hypercore instance
-	// (i.e. cores known only from pre-haves) do not inflate the namespace-level
-	// wanted/want counts.  Without a local core we cannot actually sync, so
-	// pre-have data for these phantom cores should not block presync completion.
-	const getStateOriginal =
-		'      length: Math.max(localCoreLength, this.#preHavesLength),'
+	// (i.e. cores known only from pre-haves) return completely empty state.
+	// Without a local core we cannot actually sync, so pre-have data for
+	// these phantom cores should not affect presync completion at all —
+	// neither through inflated wanted/want counts NOR through phantom peer
+	// status entries (which would block via stopped/starting status).
+	const getStateMethodOriginal = `  getState() {
+    const localCoreLength = this.#core?.length || 0
+    return deriveState({
+      length: Math.max(localCoreLength, this.#preHavesLength),`
 
-	const getStatePatched =
-		'      length: Math.max(localCoreLength, this.#core ? this.#preHavesLength : 0),'
+	const getStateMethodPatched = `  getState() {
+    if (!this.#core) {
+      return { coreLength: 0, localState: { have: 0, want: 0, wanted: 0 }, remoteStates: {} }
+    }
+    const localCoreLength = this.#core.length || 0
+    return deriveState({
+      length: Math.max(localCoreLength, this.#preHavesLength),`
 
-	if (next.includes(getStateOriginal)) {
-		next = next.replace(getStateOriginal, getStatePatched)
-	} else if (!next.includes('this.#core ? this.#preHavesLength : 0')) {
+	// Also handle the case where our previous length-only patch was applied
+	const getStatePrevPatched = `  getState() {
+    const localCoreLength = this.#core?.length || 0
+    return deriveState({
+      length: Math.max(localCoreLength, this.#core ? this.#preHavesLength : 0),`
+
+	const getStatePrevPatchedReplacement = `  getState() {
+    if (!this.#core) {
+      return { coreLength: 0, localState: { have: 0, want: 0, wanted: 0 }, remoteStates: {} }
+    }
+    const localCoreLength = this.#core.length || 0
+    return deriveState({
+      length: Math.max(localCoreLength, this.#preHavesLength),`
+
+	if (next.includes(getStateMethodOriginal)) {
+		next = next.replace(getStateMethodOriginal, getStateMethodPatched)
+	} else if (next.includes(getStatePrevPatched)) {
+		next = next.replace(getStatePrevPatched, getStatePrevPatchedReplacement)
+	} else if (!next.includes('if (!this.#core)')) {
 		throw new Error(
-			'Could not find expected @comapeo/core getState() length snippet to patch',
+			'Could not find expected @comapeo/core getState() snippet to patch',
 		)
 	}
 

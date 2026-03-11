@@ -130,13 +130,12 @@ describe('enableSyncForJoinedProjects', () => {
 		)
 	})
 
-	it('patch script skips pre-have length for unattached cores so phantom wanted does not block presync', () => {
-		expect(patchScriptSource).toContain(
-			'this.#core ? this.#preHavesLength : 0',
-		)
+	it('patch script returns empty state for unattached cores so phantom pre-haves do not block presync', () => {
+		expect(patchScriptSource).toContain('if (!this.#core)')
+		expect(patchScriptSource).toContain('remoteStates: {}')
 	})
 
-	it('patchCoreSyncStateSource transforms getState length to skip unattached cores', () => {
+	it('patchCoreSyncStateSource transforms getState to return empty state for unattached cores', () => {
 		// Must include all patterns the patch function looks for
 		const input = [
 			'  have(index) {',
@@ -147,13 +146,19 @@ describe('enableSyncForJoinedProjects', () => {
 			'    if (this.#haves) return getBitfieldWord(this.#haves, index)',
 			'    return getBitfieldWord(this.#preHaves, index)',
 			'  }',
+			'  getState() {',
+			'    const localCoreLength = this.#core?.length || 0',
+			'    return deriveState({',
 			'      length: Math.max(localCoreLength, this.#preHavesLength),',
+			'      foo: bar',
+			'    })',
+			'  }',
 		].join('\n')
 		const output = patchCoreSyncStateSource(input)
-		expect(output).toContain('this.#core ? this.#preHavesLength : 0')
-		expect(output).not.toContain(
-			'length: Math.max(localCoreLength, this.#preHavesLength),',
-		)
+		expect(output).toContain('if (!this.#core)')
+		expect(output).toContain('remoteStates: {}')
+		expect(output).toContain('this.#core.length || 0')
+		expect(output).not.toContain('this.#core?.length')
 	})
 
 	it('patch script fixes mutatingAddPeerState status comparison bug', () => {
