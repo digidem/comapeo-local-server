@@ -110,7 +110,7 @@ describe('loadConfig', () => {
 	})
 
 	it('loads COMAPEO_DEVICE_NAME from a local .env file', () => {
-		const tempDir = mkdtempSync(path.join(tmpdir(), 'comapeo-headless-env-'))
+		const tempDir = mkdtempSync(path.join(tmpdir(), 'comapeo-local-server-env-'))
 		const previousValue = process.env.COMAPEO_DEVICE_NAME
 
 		try {

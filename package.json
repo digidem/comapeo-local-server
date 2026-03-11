@@ -1,8 +1,8 @@
 {
-	"name": "comapeo-headless",
+	"name": "comapeo-local-server",
 	"version": "0.1.0",
 	"private": true,
-	"description": "Headless CoMapeo daemon for Pi-class devices",
+	"description": "Local-Server CoMapeo daemon for Pi-class devices",
 	"type": "module",
 	"engines": {
 		"node": ">=24.0.0",

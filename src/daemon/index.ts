@@ -15,7 +15,7 @@ async function main() {
 	const config = loadConfig()
 	const activeDebugNamespaces = configureLogging(config.logLevel)
 	log(
-		'Starting CoMapeo headless daemon: logLevel=%s debug=%s',
+		'Starting CoMapeo local-server daemon: logLevel=%s debug=%s',
 		config.logLevel,
 		activeDebugNamespaces || '(disabled)',
 	)
