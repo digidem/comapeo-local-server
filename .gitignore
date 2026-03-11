@@ -6,3 +6,5 @@ dist/
 /data/
 /tmp/
 .worktrees/
+AGENTS.md
+CLAUDE.md
