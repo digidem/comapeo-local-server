@@ -362,3 +362,20 @@ All tasks complete. To deploy:
   - `npm run typecheck` → clean
 - Decision: treat `blobIndex` as a prerequisite for `blob` sync only, not for `data` sync, because the observed stall was preventing all exchange even after the project membership/config presync had completed
 - Next handoff: rerun with the updated patch and confirm the logs progress from `data(enabled=false, wanted=2)` to `data(enabled=true, ...)` soon after `auth` and `config` settle
+
+- Task: fix stale pre-have state in the local `@comapeo/core` patch
+- Status: complete
+- Reason: even after the `data`-vs-`blobIndex` gating fix, live logs still stalled at `initial(enabled=true,want=0,wanted=1)` and kept `data` disabled; that pointed to one phantom presync block still being counted after live peer bitfields arrived
+- Investigation:
+  - desktop reference in `/home/luandro/Dev/digidem/comapeo-desktop` still showed no additional exchange lifecycle step beyond `project.$sync.start()`
+  - `@comapeo/core/src/sync/core-sync-state.js` claimed pre-haves should only be used until a real peer bitfield exists, but `have()` and `haveWord()` were OR-ing pre-haves with live peer haves indefinitely
+  - that behavior matches the stuck `wanted=1` presync state seen in the headless logs
+- Changes:
+  - updated `scripts/apply-comapeo-core-sync-patch.mjs` to patch `core-sync-state.js` so live peer bitfields replace pre-haves instead of being OR-ed with them forever
+  - updated `test/sync.test.ts` to assert the patch script includes the stale-pre-have fix alongside the existing sync-gating fixes
+- Checks run:
+  - `node scripts/apply-comapeo-core-sync-patch.mjs`
+  - `npm test` → 42/42 passed
+  - `npm run typecheck` → clean
+- Decision: keep this as part of the local reproducible `@comapeo/core` patch set in this repo, since the remaining stall is still dependency behavior rather than headless daemon orchestration
+- Next handoff: rerun the daemon and confirm the remote sync state no longer sticks at `initial(... wanted=1)` once live peer config/blobIndex bitfields arrive

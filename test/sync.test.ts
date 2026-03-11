@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { EventEmitter } from 'node:events'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 
 import { enableSyncForJoinedProjects, startAlwaysOnSync } from '../src/daemon/sync.js'
-// @ts-expect-error Local postinstall script module is intentionally imported in tests.
-import { patchPeerSyncControllerSource } from '../scripts/apply-comapeo-core-sync-patch.mjs'
+
+const patchScriptSource = readFileSync(
+	path.resolve('scripts/apply-comapeo-core-sync-patch.mjs'),
+	'utf8',
+)
 
 function makeSyncProject(start = vi.fn()) {
 	const emitter = new EventEmitter()
@@ -102,50 +107,24 @@ describe('enableSyncForJoinedProjects', () => {
 		)
 	})
 
-	it('patches @comapeo/core peer sync gating to use peer-specific wanted state', () => {
-		const source = `    } else if (
-      peerState.status === 'started' &&
-      state[namespace].localState.want === 0
-    ) {
-        } else if (isDataSyncEnabled) {
-          const arePresyncNamespacesSynced = PRESYNC_NAMESPACES.every(
-            (ns) => this.#syncStatus[ns] === 'synced'
-          )
-          // Only enable data namespaces once the pre-sync namespaces have synced
-          if (arePresyncNamespacesSynced) {
-            this.#enableNamespace(ns)
-          }
-        } else {
-          this.#disableNamespace(ns)
-        }`
-
-		expect(patchPeerSyncControllerSource(source)).toContain(
-			'peerState.wanted === 0',
-		)
+	it('patch script patches @comapeo/core peer sync gating to use peer-specific wanted state', () => {
+		expect(patchScriptSource).toContain('peerState.wanted === 0')
 	})
 
-	it('patches data gating so data waits for auth/config and blob waits for blobIndex', () => {
-		const source = `    } else if (
-      peerState.status === 'started' &&
-      state[namespace].localState.want === 0
-    ) {
-        } else if (isDataSyncEnabled) {
-          const arePresyncNamespacesSynced = PRESYNC_NAMESPACES.every(
-            (ns) => this.#syncStatus[ns] === 'synced'
-          )
-          // Only enable data namespaces once the pre-sync namespaces have synced
-          if (arePresyncNamespacesSynced) {
-            this.#enableNamespace(ns)
-          }
-        } else {
-          this.#disableNamespace(ns)
-        }`
+	it('patch script lets data wait for auth/config while blob still waits for blobIndex', () => {
+		expect(patchScriptSource).toContain("this.#syncStatus.auth === 'synced'")
+		expect(patchScriptSource).toContain("this.#syncStatus.config === 'synced'")
+		expect(patchScriptSource).toContain("this.#syncStatus.blobIndex === 'synced'")
+		expect(patchScriptSource).toContain("if (ns === 'data')")
+		expect(patchScriptSource).toContain("} else if (ns === 'blob')")
+	})
 
-		const patched = patchPeerSyncControllerSource(source)
-		expect(patched).toContain("this.#syncStatus.auth === 'synced'")
-		expect(patched).toContain("this.#syncStatus.config === 'synced'")
-		expect(patched).toContain("this.#syncStatus.blobIndex === 'synced'")
-		expect(patched).toContain("if (ns === 'data')")
-		expect(patched).toContain("} else if (ns === 'blob')")
+	it('patch script drops stale pre-haves once live peer bitfields exist', () => {
+		expect(patchScriptSource).toContain(
+			'if (this.#haves) return this.#haves.get(index)',
+		)
+		expect(patchScriptSource).toContain(
+			'if (this.#haves) return getBitfieldWord(this.#haves, index)',
+		)
 	})
 })

@@ -73,24 +73,77 @@ export function patchPeerSyncControllerSource(source) {
 	return next
 }
 
-export function applyPatch(targetPath = path.resolve(
-	'node_modules/@comapeo/core/src/sync/peer-sync-controller.js',
-)) {
+export function patchCoreSyncStateSource(source) {
+	let next = source
+
+	const haveOriginal = `  have(index) {
+    return this.#haves?.get(index) || this.#preHaves.get(index)
+  }`
+
+	const havePatched = `  have(index) {
+    if (this.#haves) return this.#haves.get(index)
+    return this.#preHaves.get(index)
+  }`
+
+	if (next.includes(haveOriginal)) {
+		next = next.replace(haveOriginal, havePatched)
+	} else if (!next.includes('if (this.#haves) return this.#haves.get(index)')) {
+		throw new Error(
+			'Could not find expected @comapeo/core have() snippet to patch',
+		)
+	}
+
+	const haveWordOriginal = `  haveWord(index) {
+    const preHaveWord = getBitfieldWord(this.#preHaves, index)
+    if (!this.#haves) return preHaveWord
+    return preHaveWord | getBitfieldWord(this.#haves, index)
+  }`
+
+	const haveWordPatched = `  haveWord(index) {
+    if (this.#haves) return getBitfieldWord(this.#haves, index)
+    return getBitfieldWord(this.#preHaves, index)
+  }`
+
+	if (next.includes(haveWordOriginal)) {
+		next = next.replace(haveWordOriginal, haveWordPatched)
+	} else if (
+		!next.includes('if (this.#haves) return getBitfieldWord(this.#haves, index)')
+	) {
+		throw new Error(
+			'Could not find expected @comapeo/core haveWord() snippet to patch',
+		)
+	}
+
+	return next
+}
+
+function applySinglePatch({ targetPath, transform, label }) {
 	const existing = readFileSync(targetPath, 'utf8')
-	const next = patchPeerSyncControllerSource(existing)
+	const next = transform(existing)
 
 	if (next !== existing) {
 		writeFileSync(targetPath, next)
-		console.log(
-			'Applied @comapeo/core peer sync controller patch:',
-			path.relative(process.cwd(), targetPath),
-		)
+		console.log('Applied', label + ':', path.relative(process.cwd(), targetPath))
 	} else {
-		console.log(
-			'@comapeo/core peer sync controller patch already applied:',
-			path.relative(process.cwd(), targetPath),
-		)
+		console.log(label + ' already applied:', path.relative(process.cwd(), targetPath))
 	}
+}
+
+export function applyPatch() {
+	applySinglePatch({
+		targetPath: path.resolve(
+			'node_modules/@comapeo/core/src/sync/peer-sync-controller.js',
+		),
+		transform: patchPeerSyncControllerSource,
+		label: '@comapeo/core peer sync controller patch',
+	})
+	applySinglePatch({
+		targetPath: path.resolve(
+			'node_modules/@comapeo/core/src/sync/core-sync-state.js',
+		),
+		transform: patchCoreSyncStateSource,
+		label: '@comapeo/core core sync state patch',
+	})
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
