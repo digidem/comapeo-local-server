@@ -329,3 +329,23 @@ All tasks complete. To deploy:
   - `npm test -- test/sync.test.ts test/invites.test.ts`
   - `npm run typecheck`
 - Decision: treat any non-left active project (`joining` or `joined`) as eligible for always-on exchange
+
+- Task: add sync debug instrumentation and fix per-peer full-sync gating
+- Status: complete
+- Reason: live logs showed the daemon entering sync state `all`, but newly connected peers still rejected known `data` and `blob` discovery keys as disabled; investigation showed a deeper `@comapeo/core` gating bug rather than a missing daemon lifecycle call
+- Investigation:
+  - desktop reference review found no extra exchange-start step beyond `project.$sync.start()`
+  - core investigation found `node_modules/@comapeo/core/src/sync/peer-sync-controller.js` was gating per-peer `data`/`blob` enablement on namespace-global `state[namespace].localState.want === 0`
+  - this could keep a specific peer stuck in presync even after headless had already enabled full sync
+- Changes:
+  - `src/daemon/sync.ts` now starts always-on sync supervision, logs local peer updates, and logs per-project `$sync` state summaries including remote device enablement and want/wanted counts
+  - `src/daemon/index.ts` now uses that always-on sync supervisor and tears it down on shutdown
+  - `scripts/apply-comapeo-core-sync-patch.mjs` now patches `@comapeo/core` after install so per-peer gating uses `peerState.wanted === 0`
+  - `package.json` now runs that patch from `postinstall`
+  - `test/sync.test.ts` now covers local-peer-triggered reconciliation and the patch transform
+- Checks run:
+  - `node scripts/apply-comapeo-core-sync-patch.mjs`
+  - `npm test` → 40/40 passed
+  - `npm run typecheck` → clean
+- Decision: carry a reproducible local patch to `@comapeo/core` in this repo instead of relying on manual `node_modules` edits, because the bug is in dependency sync gating rather than headless daemon wiring
+- Next handoff: rerun the daemon and confirm the new `comapeo:sync` logs show remote peers eventually switching `data(enabled=true)` after presync completion

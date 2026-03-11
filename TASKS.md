@@ -52,3 +52,4 @@
 
 - [x] `[low | gpt-5.3-codex]` Make local `.env` bootstrapping work for `bun start` and align demo defaults with the host-Node release. Output: startup loads `.env` automatically, `.env.example` is demo-ready, and verification notes are recorded in `PROGRESS.md`.
 - [x] `[low | gpt-5.3-codex]` Keep project exchange always on in the headless daemon so joined projects start syncing on boot and newly accepted invites start syncing immediately. Output: daemon-side joined-project sync reconciliation, invite-to-sync wiring, and verification notes in `PROGRESS.md`.
+- [x] `[medium | gpt-5.3-codex | use subagents for investigation]` Add sync debug instrumentation and fix the per-peer full-sync gating issue that kept `data`/`blob` disabled after startup. Output: daemon-side sync-state/local-peer logs, reproducible `@comapeo/core` patching, and verification notes in `PROGRESS.md`.

@@ -5,7 +5,7 @@ import { loadOrCreateRootKey } from '../config/root-key.js'
 import { initCore } from '../core/index.js'
 import { configureLogging } from '../logging/index.js'
 import { startInviteHandler } from './invites.js'
-import { enableSyncForJoinedProjects } from './sync.js'
+import { enableSyncForJoinedProjects, startAlwaysOnSync } from './sync.js'
 
 const log = debug('comapeo:daemon')
 
@@ -27,7 +27,7 @@ async function main() {
 
 	// ── Core bootstrap ────────────────────────────────────────────────────────
 	const core = await initCore(config, rootKey)
-	await enableSyncForJoinedProjects(core.manager)
+	const alwaysOnSync = startAlwaysOnSync(core.manager)
 	log('Core ready – daemon is fully started')
 
 	// ── Invite handler ────────────────────────────────────────────────────────
@@ -45,6 +45,7 @@ async function main() {
 		async function shutdown(signal: string) {
 			log('Received %s, shutting down', signal)
 			inviteHandler.stop()
+			alwaysOnSync.stop()
 			await core.stop()
 			resolve()
 		}
