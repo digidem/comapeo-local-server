@@ -395,3 +395,27 @@ All tasks complete. To deploy:
   - report reviewed locally against current `TASKS.md`, `PROGRESS.md`, daemon code, patch script, and desktop exchange route
 - Decision: keep the report focused on handoff quality rather than adding more speculative code changes while the root cause is still unresolved
 - Next handoff: next developer should begin with `SYNC_EXCHANGE_INVESTIGATION.md`, then instrument per-namespace presync accounting to identify which specific initial namespace still contributes the persistent `wanted=1`
+
+- Task: identify and fix root cause of phantom pre-haves blocking presync completion
+- Status: complete
+- Reason: deep investigation of `@comapeo/core` sync internals revealed two bugs that together caused the persistent `initial(wanted=1)` state that blocked data sync
+- Investigation:
+  - traced the full sync state computation chain from `CoreSyncState` → `NamespaceSyncState` → `SyncState` → `SyncApi` → `PeerSyncController`
+  - identified that `wanted` semantics mean "blocks we want from the remote peer" (not the other way around)
+  - found that `NamespaceSyncState.#insertPreHaves` creates `CoreSyncState` objects for cores known only via pre-have extension messages, before the local node has received core-ownership documents and core keys
+  - these phantom `CoreSyncState` objects have no attached Hypercore (`#core = undefined`), so pre-haves are never replaced by live bitfields
+  - in `CoreSyncState.getState()`, `length = Math.max(0, preHavesLength)` caused the `deriveState` loop to iterate over phantom pre-have ranges, computing `iWantFromThem = peerHaves & ~0 & all_ones = peerHaves` → non-zero `wanted`
+  - found a secondary bug in `namespace-sync-state.js:211`: `accumulator.status === 'stopped'` is a comparison (no-op), not an assignment; this caused `stopped` status from phantom cores to be silently dropped in the aggregate while their `wanted` counts leaked through
+  - together these bugs created the observed `initial(enabled=true, want=0, wanted=1)` state: the aggregate status appeared `started` (due to the comparison bug) while phantom `wanted` counts persisted (due to unattached core iteration)
+- Changes:
+  - updated `scripts/apply-comapeo-core-sync-patch.mjs` with two new patches:
+    - `core-sync-state.js` `getState()`: use `this.#core ? this.#preHavesLength : 0` to skip unattached cores
+    - `namespace-sync-state.js` `mutatingAddPeerState`: fix `===` to `=` for stopped status propagation
+  - updated `test/sync.test.ts` with new tests for both patches (functional transforms and script content assertions)
+  - updated `SYNC_EXCHANGE_INVESTIGATION.md` with root cause analysis, resolution details, and updated next steps
+- Checks run:
+  - `node scripts/apply-comapeo-core-sync-patch.mjs` → all 5 patches applied
+  - `npm test` → 46/46 passed
+  - `npm run typecheck` → clean
+- Decision: these two patches address the identified root cause of presync never completing; combined with the three existing patches they form a comprehensive fix set for the `@comapeo/core` sync state machine bugs
+- Next handoff: runtime verification needed — run the headless daemon against a mobile peer and confirm `initial(wanted=0)` is reached, followed by `data(enabled=true)` and successful exchange

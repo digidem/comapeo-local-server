@@ -114,6 +114,46 @@ export function patchCoreSyncStateSource(source) {
 		)
 	}
 
+	// Patch getState() so cores without an attached local Hypercore instance
+	// (i.e. cores known only from pre-haves) do not inflate the namespace-level
+	// wanted/want counts.  Without a local core we cannot actually sync, so
+	// pre-have data for these phantom cores should not block presync completion.
+	const getStateOriginal =
+		'      length: Math.max(localCoreLength, this.#preHavesLength),'
+
+	const getStatePatched =
+		'      length: Math.max(localCoreLength, this.#core ? this.#preHavesLength : 0),'
+
+	if (next.includes(getStateOriginal)) {
+		next = next.replace(getStateOriginal, getStatePatched)
+	} else if (!next.includes('this.#core ? this.#preHavesLength : 0')) {
+		throw new Error(
+			'Could not find expected @comapeo/core getState() length snippet to patch',
+		)
+	}
+
+	return next
+}
+
+export function patchNamespaceSyncStateSource(source) {
+	let next = source
+
+	// Fix comparison-instead-of-assignment bug in mutatingAddPeerState.
+	// The original code uses === (comparison, no-op) instead of = (assignment),
+	// so a 'stopped' status from one core never propagates into the namespace
+	// aggregate.  This bug accidentally hides the stopped status of phantom
+	// pre-have-only cores while their wanted counts still leak through.
+	const statusBugOriginal = "      accumulator.status === 'stopped'"
+	const statusBugPatched = "      accumulator.status = 'stopped'"
+
+	if (next.includes(statusBugOriginal)) {
+		next = next.replace(statusBugOriginal, statusBugPatched)
+	} else if (!next.includes("accumulator.status = 'stopped'")) {
+		throw new Error(
+			'Could not find expected @comapeo/core mutatingAddPeerState status bug to patch',
+		)
+	}
+
 	return next
 }
 
@@ -143,6 +183,13 @@ export function applyPatch() {
 		),
 		transform: patchCoreSyncStateSource,
 		label: '@comapeo/core core sync state patch',
+	})
+	applySinglePatch({
+		targetPath: path.resolve(
+			'node_modules/@comapeo/core/src/sync/namespace-sync-state.js',
+		),
+		transform: patchNamespaceSyncStateSource,
+		label: '@comapeo/core namespace sync state patch',
 	})
 }
 

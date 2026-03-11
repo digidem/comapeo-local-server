@@ -219,50 +219,87 @@ Interpretation:
 - `data` waiting on `blobIndex`: patched
 - Pre-haves persisting after live bitfields: patched locally
 
-## Possible Remaining Issues
+## Root Cause Identified (commit after 813e849)
 
-These are the current most plausible unresolved causes.
+### Primary: Phantom pre-haves from unattached cores blocking presync
 
-### 1. Another stale presync accounting issue remains in `@comapeo/core`
+Pre-haves arrive via extension messages for ALL cores the remote peer knows
+about, including cores of other project devices that the local node has not
+yet received core-ownership documents for. `NamespaceSyncState.#insertPreHaves`
+creates `CoreSyncState` objects for these unknown cores via `#getCoreState`,
+but those `CoreSyncState` objects never have `attachCore()` called (since we
+don't know the core key yet). In `CoreSyncState.getState()`, the iteration
+length was computed as:
 
-The persistent `initial(... wanted=1)` still suggests one block is being
-counted as needed even after config/blobIndex replication starts.
+```
+Math.max(localCoreLength, this.#preHavesLength)
+```
 
-Likely places:
+For unattached cores, `localCoreLength = 0` but `preHavesLength > 0`. The
+`deriveState` loop then iterates over the pre-have range and computes:
 
-- `@comapeo/core/src/sync/core-sync-state.js`
-- `@comapeo/core/src/sync/namespace-sync-state.js`
-- `@comapeo/core/src/sync/peer-sync-controller.js`
-- `@comapeo/core/src/sync/sync-api.js`
+```
+iWantFromThem = peerHaves & ~localHaves & localWants
+```
 
-Specific suspicion:
+Since the peer's `peerHaves` comes from pre-haves (no live `#haves` bitfield
+was ever set), and `localHaves = 0` (no local core), and `localWants = all 1s`
+(wants everything), the result is non-zero. This phantom `wanted` count is
+aggregated into the namespace-level state and prevents `getSyncStatus` from
+returning `'synced'` for that presync namespace.
 
-- the remote sync summary is aggregated by namespace group
-- the remaining `wanted=1` may come from a specific presync core whose
-  bitfield/have accounting is still inconsistent
+### Secondary: Status comparison bug in `mutatingAddPeerState`
 
-### 2. Unknown discovery keys may correspond to cores not being added locally
+In `namespace-sync-state.js`, the `mutatingAddPeerState` function had a bug
+at line 211:
 
-Observed repeatedly:
+```js
+accumulator.status === 'stopped'  // comparison, not assignment!
+```
 
-- unknown discovery keys such as `59789bd`, `20ed78d`, `76b1368`, `7fd481b`,
-  `9f57338`, `a97e366`, `0fdf239`
+This should be `accumulator.status = 'stopped'` (assignment). The bug means
+that when a phantom core has the peer in `stopped` status (because the core
+is never replicated), that `stopped` status does not propagate into the
+namespace aggregate. The aggregate shows `started` (from real cores) while
+the phantom `wanted` still leaks through. This creates the observed state:
 
-Possible meaning:
+```
+initial(enabled=true, want=0, wanted=1)
+```
 
-- peer is advertising cores that local project core index does not know about
-- one of those may be relevant to completion of presync
-- if the missing key belongs to a presync core path, that would explain the
-  stuck `wanted=1`
+where `enabled=true` (aggregate status is 'started' due to the bug) and
+`wanted=1` (phantom pre-have counts leak through). `getSyncStatus` then
+returns `'syncing'` instead of `'synced'`, blocking data sync.
 
-### 3. Peer disconnect is caused by no data-phase progress
+### Fix applied
 
-The mobile peer disconnects after roughly 40 seconds.
+Two patches added to `scripts/apply-comapeo-core-sync-patch.mjs`:
 
-Possible interpretation:
+1. `core-sync-state.js` `getState()`: use `this.#core ? this.#preHavesLength : 0`
+   so unattached cores report zero length and produce zero want/wanted counts
 
-- the peer times out or gives up because no meaningful exchange progress happens
-- disconnection may be a consequence, not the root cause
+2. `namespace-sync-state.js` `mutatingAddPeerState`: change `===` to `=` for
+   the stopped status propagation
+
+## Previous Hypotheses (now resolved)
+
+### 1. Stale presync accounting (partially correct)
+
+The `wanted=1` was indeed from presync cores, but not from stale pre-haves
+in connected cores. It was from phantom pre-haves in cores that were never
+attached locally.
+
+### 2. Unknown discovery keys (related)
+
+The unknown discovery keys correspond to cores the local node doesn't have
+yet. These are the same cores that produce phantom pre-haves. The fix
+prevents them from blocking presync, but the unknown keys themselves are
+expected and harmless.
+
+### 3. Peer disconnect (consequence, not cause)
+
+Confirmed: the peer disconnects because data sync never starts, not the
+other way around.
 
 ## Important Code Paths
 
@@ -286,10 +323,11 @@ Possible interpretation:
 
 - `node_modules/@comapeo/core/src/sync/peer-sync-controller.js`
 - `node_modules/@comapeo/core/src/sync/core-sync-state.js`
+- `node_modules/@comapeo/core/src/sync/namespace-sync-state.js`
 
 ## Current Patch Script Behavior
 
-`scripts/apply-comapeo-core-sync-patch.mjs` currently applies three changes:
+`scripts/apply-comapeo-core-sync-patch.mjs` currently applies five changes:
 
 1. `peer-sync-controller.js`
    - peer sync status uses `peerState.wanted === 0`
@@ -302,6 +340,14 @@ Possible interpretation:
 3. `core-sync-state.js`
    - live peer bitfields replace pre-haves
    - pre-haves are no longer OR-ed indefinitely with live haves
+
+4. `core-sync-state.js`
+   - `getState()` uses `this.#core ? this.#preHavesLength : 0` for iteration
+     length so unattached cores produce zero want/wanted counts
+
+5. `namespace-sync-state.js`
+   - fixes `accumulator.status === 'stopped'` (comparison, no-op) to
+     `accumulator.status = 'stopped'` (assignment) in `mutatingAddPeerState`
 
 The script runs from `postinstall`.
 
@@ -344,62 +390,35 @@ not prove runtime exchange completion on-device.
 
 ## Recommended Next Steps
 
-### 1. Instrument exact presync namespace source of `wanted=1`
+### 1. Runtime verification
 
-Add temporary logging that breaks `initial` down by namespace:
+Run the headless daemon against a mobile peer and confirm:
 
-- auth
-- config
-- blobIndex
+- `initial(... wanted=0)` is reached after presync
+- `data(enabled=true)` follows
+- exchange completes successfully
 
-Needed answer:
+If the fix works, the `wanted=1` should no longer persist.
 
-- which specific namespace is contributing the final outstanding `wanted=1`
+### 2. If exchange still does not complete
 
-Without that, the aggregated `initial` summary is still too coarse.
+The phantom pre-have fix addresses the most credible root cause. If the
+issue persists, the next areas to investigate are:
 
-### 2. Instrument unknown discovery keys
+- whether `core.update({ wait: true })` never resolves for a specific core,
+  keeping `status` at `'starting'` indefinitely
+- whether there are additional pre-have accounting issues beyond unattached
+  cores (e.g., pre-haves for cores in a different namespace than expected)
+- whether the mobile peer's sync controller has its own version of this bug
 
-Add logging to map unknown discovery keys to:
+### 3. Consider upstreaming the patches
 
-- whether they belong to a peer core not yet added
-- whether they are outside the project
-- whether they correspond to a presync namespace
+The five patches in `scripts/apply-comapeo-core-sync-patch.mjs` fix real
+bugs in `@comapeo/core`. Consider:
 
-This may reveal whether a required core is missing from local core registration.
-
-### 3. Compare runtime on desktop with the same debug surface
-
-If possible, run the desktop app against the same project/device and compare:
-
-- does desktop ever show a transient `initial(... wanted=1)`?
-- how long does it last?
-- does desktop see the same unknown discovery keys?
-
-This would help decide whether the issue is specific to headless runtime or is
-present but masked differently in desktop flows.
-
-### 4. Consider upstreaming or isolating the `@comapeo/core` issue
-
-At this point the problem appears strongly centered in `@comapeo/core` sync
-internals. If another engineer continues, they should be ready to:
-
-- patch deeper in dependency behavior
-- reduce the issue to a minimal reproduction
-- open or prepare an upstream fix against `@comapeo/core`
-
-## Recommended Handoff Checklist
-
-For the next developer:
-
-1. Read this report.
-2. Read `PROGRESS.md`.
-3. Read `src/daemon/sync.ts`.
-4. Read `scripts/apply-comapeo-core-sync-patch.mjs`.
-5. Compare with desktop exchange route in:
-   `/home/luandro/Dev/digidem/comapeo-desktop/src/renderer/src/routes/app/projects/$projectId/_main-tabs/exchange/index.tsx`
-6. Reproduce the issue with current `HEAD`.
-7. Instrument per-namespace presync accounting for the remote peer.
+- opening upstream issues against `@comapeo/core` for each bug
+- preparing minimal reproductions for the upstream maintainers
+- tracking upstream releases that might incorporate these fixes
 
 ## Files to Review First
 
@@ -407,5 +426,4 @@ For the next developer:
 - `/home/luandro/Dev/digidem/comapeo-headless/PROGRESS.md`
 - `/home/luandro/Dev/digidem/comapeo-headless/src/daemon/sync.ts`
 - `/home/luandro/Dev/digidem/comapeo-headless/scripts/apply-comapeo-core-sync-patch.mjs`
-- `/home/luandro/Dev/digidem/comapeo-desktop/src/renderer/src/routes/app/projects/$projectId/_main-tabs/exchange/index.tsx`
 

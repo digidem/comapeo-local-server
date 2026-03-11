@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { enableSyncForJoinedProjects, startAlwaysOnSync } from '../src/daemon/sync.js'
+// @ts-expect-error – untyped .mjs patch script
+import { patchCoreSyncStateSource, patchNamespaceSyncStateSource } from '../scripts/apply-comapeo-core-sync-patch.mjs'
 
 const patchScriptSource = readFileSync(
 	path.resolve('scripts/apply-comapeo-core-sync-patch.mjs'),
@@ -126,5 +128,44 @@ describe('enableSyncForJoinedProjects', () => {
 		expect(patchScriptSource).toContain(
 			'if (this.#haves) return getBitfieldWord(this.#haves, index)',
 		)
+	})
+
+	it('patch script skips pre-have length for unattached cores so phantom wanted does not block presync', () => {
+		expect(patchScriptSource).toContain(
+			'this.#core ? this.#preHavesLength : 0',
+		)
+	})
+
+	it('patchCoreSyncStateSource transforms getState length to skip unattached cores', () => {
+		// Must include all patterns the patch function looks for
+		const input = [
+			'  have(index) {',
+			'    if (this.#haves) return this.#haves.get(index)',
+			'    return this.#preHaves.get(index)',
+			'  }',
+			'  haveWord(index) {',
+			'    if (this.#haves) return getBitfieldWord(this.#haves, index)',
+			'    return getBitfieldWord(this.#preHaves, index)',
+			'  }',
+			'      length: Math.max(localCoreLength, this.#preHavesLength),',
+		].join('\n')
+		const output = patchCoreSyncStateSource(input)
+		expect(output).toContain('this.#core ? this.#preHavesLength : 0')
+		expect(output).not.toContain(
+			'length: Math.max(localCoreLength, this.#preHavesLength),',
+		)
+	})
+
+	it('patch script fixes mutatingAddPeerState status comparison bug', () => {
+		expect(patchScriptSource).toContain("accumulator.status = 'stopped'")
+	})
+
+	it('patchNamespaceSyncStateSource fixes status comparison-to-assignment bug', () => {
+		const input = `function mutatingAddPeerState(a, b) {
+      accumulator.status === 'stopped'
+    }`
+		const output = patchNamespaceSyncStateSource(input)
+		expect(output).toContain("accumulator.status = 'stopped'")
+		expect(output).not.toContain("accumulator.status === 'stopped'")
 	})
 })
