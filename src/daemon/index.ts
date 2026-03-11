@@ -6,6 +6,7 @@ import { initCore } from '../core/index.js'
 import { configureLogging } from '../logging/index.js'
 import { startInviteHandler } from './invites.js'
 import { enableSyncForJoinedProjects, startAlwaysOnSync } from './sync.js'
+import { markReady, clearReady } from './ready.js'
 
 const log = debug('comapeo:daemon')
 
@@ -37,13 +38,15 @@ async function main() {
 		() => enableSyncForJoinedProjects(core.manager),
 	)
 
-	// Signal readiness for smoke tests once startup is complete.
+	// Signal readiness: stdout marker for smoke tests + file marker for Docker healthcheck.
+	markReady(config.dataDir)
 	process.stdout.write('READY\n')
 
 	// ── Signal handling ───────────────────────────────────────────────────────
 	await new Promise<void>((resolve) => {
 		async function shutdown(signal: string) {
 			log('Received %s, shutting down', signal)
+			clearReady(config.dataDir)
 			inviteHandler.stop()
 			alwaysOnSync.stop()
 			await core.stop()
