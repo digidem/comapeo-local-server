@@ -56,6 +56,11 @@ describe('loadConfig', () => {
 		expect(config.rootKey).toBe(hex)
 	})
 
+	it('treats blank COMAPEO_ROOT_KEY as unset', () => {
+		const config = loadConfig({ COMAPEO_DEVICE_NAME: 'dev', COMAPEO_ROOT_KEY: '' })
+		expect(config.rootKey).toBeUndefined()
+	})
+
 	it('throws when COMAPEO_ROOT_KEY is wrong length', () => {
 		expect(() =>
 			loadConfig({ COMAPEO_DEVICE_NAME: 'dev', COMAPEO_ROOT_KEY: 'abc123' }),
@@ -75,6 +80,11 @@ describe('loadConfig', () => {
 		const url = 'https://tiles.example.com/style.json'
 		const config = loadConfig({ COMAPEO_DEVICE_NAME: 'dev', ONLINE_STYLE_URL: url })
 		expect(config.onlineStyleUrl).toBe(url)
+	})
+
+	it('treats blank ONLINE_STYLE_URL as unset', () => {
+		const config = loadConfig({ COMAPEO_DEVICE_NAME: 'dev', ONLINE_STYLE_URL: '   ' })
+		expect(config.onlineStyleUrl).toBeUndefined()
 	})
 
 	it('throws when ONLINE_STYLE_URL is not a valid URL', () => {

@@ -38,3 +38,12 @@
 
 - [x] `[medium | gpt-5.3-codex]` Run the full test suite plus the container smoke path, then fix any regressions before handoff. Output: final verification summary in `PROGRESS.md`.
 - [x] `[low]` Perform a final review of the repo against [`PLAN.md`](/home/luandro/Dev/digidem/comapeo-desktop/PLAN.md) and confirm the delivered implementation still matches the direct-daemon, regular-device scope. Output: final acceptance checklist in `PROGRESS.md`.
+
+## Post-plan fixes
+
+- [x] `[low | gpt-5.3-codex]` Make optional compose env vars safe when unset and add a dev-friendly compose default for `COMAPEO_DEVICE_NAME` so `docker compose up` works without placeholder validation failures. Output: config normalization tests, compose default, and fix notes in `PROGRESS.md`.
+- [x] `[low | gpt-5.3-codex]` Document Docker discovery investigation findings, including rootless-network conclusions and recommended next directions, in a repo markdown report. Output: `DOCKER_DISCOVERY_FINDINGS.md` plus a handoff note in `PROGRESS.md`.
+
+## Release cleanup
+
+- [x] `[medium | gpt-5.3-codex]` Prepare `main` for the v1 host-Node release by removing Docker artifacts, removing Docker-only readiness wiring, and adding a clear README for direct Node deployment. Output: Docker-free `main`, README, and verification notes in `PROGRESS.md`.

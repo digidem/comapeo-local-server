@@ -2,9 +2,9 @@
 
 ## Current Status
 
-- Date: 2026-03-06
+- Date: 2026-03-10
 - Active task: –
-- Status: ALL BATCHES COMPLETE
+- Status: MAIN V1 CLEANUP COMPLETE
 - Owner: orchestration agent
 
 ## Completed Work
@@ -229,3 +229,60 @@ All tasks complete. To deploy:
 1. `cp .env.example .env` and set COMAPEO_DEVICE_NAME
 2. `docker compose up -d` (requires Docker buildx for arm64 cross-compile if not on Pi)
 3. Confirm `docker compose ps` shows daemon healthy after ~30s
+
+## Post-plan fixes
+
+- Task: make blank optional env vars compose-safe and add a smoke-friendly compose device name default
+- Status: complete
+- Reason: `docker-compose.yml` passed empty strings for `COMAPEO_ROOT_KEY` and `ONLINE_STYLE_URL`, which caused config validation failures during local smoke runs
+- Changes:
+  - `src/config/index.ts` now normalizes blank `COMAPEO_ROOT_KEY` and `ONLINE_STYLE_URL` to unset before validation
+  - `test/config.test.ts` now covers blank optional env values
+  - `docker-compose.yml` now defaults `COMAPEO_DEVICE_NAME` to `comapeo-headless-dev` for local testing while still allowing override in `.env`
+- Checks run:
+  - `npm test`
+  - `npm run typecheck`
+- Decision: keep `COMAPEO_DEVICE_NAME` required in the app config itself, but make Compose provide a dev-only default so the container can boot out of the box
+- Next handoff: for real deployments, set `COMAPEO_DEVICE_NAME` explicitly in `.env` so peers see a meaningful device name
+
+- Task: document Docker discovery investigation findings and recommended direction
+- Status: complete
+- Reason: the daemon was discoverable on Android when run directly on the host, but not through Docker Compose, so the failure mode needed to be captured clearly for future work
+- Findings recorded in:
+  - `DOCKER_DISCOVERY_FINDINGS.md`
+- Evidence gathered:
+  - host-node run was visible on Android
+  - Compose run reported successful startup and mDNS advertisement but still did not appear on Android
+  - container-side interface discovery showed non-LAN interfaces such as `tap0` instead of the real Wi-Fi interface
+  - `docker info` showed a rootless runtime
+  - an Avahi-over-D-Bus container workaround was attempted and failed with D-Bus client errors
+- Checks run:
+  - `npm test`
+  - `npm run typecheck`
+  - `npm run build`
+  - host-node discovery smoke
+  - `docker compose up -d --build`
+  - `docker compose logs`
+  - `docker info`
+  - `docker context ls`
+  - `avahi-browse -rt _comapeo._tcp`
+- Decision: treat this host's rootless Docker setup as not suitable for reliable Android LAN discovery
+- Next handoff: prefer a direct host-node or `systemd` deployment on the target Pi, and only revisit Docker discovery on a native/rootful engine that can prove visibility of the real LAN interface from inside the container
+
+## Release cleanup
+
+- Task: prepare `main` for the v1 host-Node release and move Docker support out of the supported branch
+- Status: complete
+- Reason: the supported release target is now direct host-Node deployment, while Docker support and discovery investigation live in the separate worktree branch
+- Changes:
+  - added `README.md` with Node-first install, config, run, verification, and deployment guidance
+  - removed `Dockerfile`, `docker-compose.yml`, and `DOCKER_DISCOVERY_FINDINGS.md` from `main`
+  - removed Docker-only readiness marker support from `src/daemon/index.ts`
+  - kept generic runtime improvements such as logging setup and config normalization
+  - added `vitest.config.ts` so local tests exclude nested `.worktrees/` checkouts
+- Checks run:
+  - `npm test`
+  - `npm run typecheck`
+  - `node --run start:smoke`
+- Decision: `main` is the Docker-free v1 branch; container support is not documented or shipped from this branch
+- Next handoff: keep Docker and Compose work isolated to `wip/docker-discovery-investigation` and do release/tagging work only after both branches are clean

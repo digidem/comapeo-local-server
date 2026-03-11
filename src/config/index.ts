@@ -1,5 +1,7 @@
 import * as v from 'valibot'
 
+const OPTIONAL_EMPTY_AS_UNSET = ['COMAPEO_ROOT_KEY', 'ONLINE_STYLE_URL'] as const
+
 // Env var names mapped to typed, validated Config fields.
 const EnvSchema = v.object({
 	COMAPEO_DEVICE_NAME: v.pipe(
@@ -41,6 +43,18 @@ export type Config = {
 	logLevel: string
 }
 
+function normalizeEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+	const normalized = { ...env }
+
+	for (const key of OPTIONAL_EMPTY_AS_UNSET) {
+		if (normalized[key]?.trim() === '') {
+			delete normalized[key]
+		}
+	}
+
+	return normalized
+}
+
 /**
  * Parse and validate environment variables into a typed Config object.
  * Accepts an optional env object (defaults to process.env) for testability.
@@ -50,7 +64,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 	let parsed: v.InferOutput<typeof EnvSchema>
 
 	try {
-		parsed = v.parse(EnvSchema, env)
+		parsed = v.parse(EnvSchema, normalizeEnv(env))
 	} catch (err) {
 		if (v.isValiError(err)) {
 			const messages = err.issues

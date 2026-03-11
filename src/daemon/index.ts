@@ -3,16 +3,20 @@ import debug from 'debug'
 import { loadConfig } from '../config/index.js'
 import { loadOrCreateRootKey } from '../config/root-key.js'
 import { initCore } from '../core/index.js'
+import { configureLogging } from '../logging/index.js'
 import { startInviteHandler } from './invites.js'
-import { markReady, clearReady } from './ready.js'
 
 const log = debug('comapeo:daemon')
 
 async function main() {
-	log('Starting CoMapeo headless daemon')
-
 	// ── Config ────────────────────────────────────────────────────────────────
 	const config = loadConfig()
+	const activeDebugNamespaces = configureLogging(config.logLevel)
+	log(
+		'Starting CoMapeo headless daemon: logLevel=%s debug=%s',
+		config.logLevel,
+		activeDebugNamespaces || '(disabled)',
+	)
 	log('Config loaded: device=%s dataDir=%s', config.deviceName, config.dataDir)
 
 	// ── Root key ──────────────────────────────────────────────────────────────
@@ -29,15 +33,13 @@ async function main() {
 		config.autoAcceptInvites,
 	)
 
-	// Signal readiness: stdout marker for smoke tests + file marker for Docker healthcheck.
-	markReady(config.dataDir)
+	// Signal readiness for smoke tests once startup is complete.
 	process.stdout.write('READY\n')
 
 	// ── Signal handling ───────────────────────────────────────────────────────
 	await new Promise<void>((resolve) => {
 		async function shutdown(signal: string) {
 			log('Received %s, shutting down', signal)
-			clearReady(config.dataDir)
 			inviteHandler.stop()
 			await core.stop()
 			resolve()
