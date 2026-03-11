@@ -59,6 +59,18 @@ describe('startInviteHandler', () => {
 		await vi.waitFor(() => expect(stub.accept).toHaveBeenCalledWith({ inviteId: 'beef01' }))
 	})
 
+	it('calls the joined-project callback after accepting an invite', async () => {
+		const onProjectJoined = vi.fn().mockResolvedValue(undefined)
+		startInviteHandler(stub as never, true, onProjectJoined)
+
+		const handler = stub.on.mock.calls[0]![1] as (invite: FakeInvite) => void
+		handler({ inviteId: 'beef04', state: 'pending' })
+
+		await vi.waitFor(() =>
+			expect(onProjectJoined).toHaveBeenCalledWith('project-abc'),
+		)
+	})
+
 	it('does not call accept for non-pending invite on invite-received', async () => {
 		startInviteHandler(stub as never, true)
 
@@ -86,14 +98,16 @@ describe('startInviteHandler', () => {
 
 	it('does not crash when accept rejects (already joined)', async () => {
 		stub.accept.mockRejectedValue(new Error('Already joining or in project'))
+		const onProjectJoined = vi.fn()
 
-		startInviteHandler(stub as never, true)
+		startInviteHandler(stub as never, true, onProjectJoined)
 
 		const handler = stub.on.mock.calls[0]![1] as (invite: FakeInvite) => void
 		handler({ inviteId: 'beef03', state: 'pending' })
 
 		// Should not throw; give it time to settle
 		await new Promise((r) => setTimeout(r, 20))
+		expect(onProjectJoined).not.toHaveBeenCalled()
 	})
 
 	it('stop() removes the event listener', () => {

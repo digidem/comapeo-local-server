@@ -5,6 +5,7 @@ import { loadOrCreateRootKey } from '../config/root-key.js'
 import { initCore } from '../core/index.js'
 import { configureLogging } from '../logging/index.js'
 import { startInviteHandler } from './invites.js'
+import { enableSyncForJoinedProjects } from './sync.js'
 
 const log = debug('comapeo:daemon')
 
@@ -26,12 +27,14 @@ async function main() {
 
 	// ── Core bootstrap ────────────────────────────────────────────────────────
 	const core = await initCore(config, rootKey)
+	await enableSyncForJoinedProjects(core.manager)
 	log('Core ready – daemon is fully started')
 
 	// ── Invite handler ────────────────────────────────────────────────────────
 	const inviteHandler = startInviteHandler(
 		core.manager.invite,
 		config.autoAcceptInvites,
+		() => enableSyncForJoinedProjects(core.manager),
 	)
 
 	// Signal readiness for smoke tests once startup is complete.

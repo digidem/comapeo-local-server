@@ -18,6 +18,7 @@ type Invite = InviteApi.Invite
 export function startInviteHandler(
 	inviteApi: InstanceType<typeof MapeoManager>['invite'],
 	autoAccept: boolean,
+	onProjectJoined?: (projectId: string) => void | Promise<void>,
 ): { stop: () => void } {
 	if (!autoAccept) {
 		log('Auto-accept invites disabled; not subscribing')
@@ -39,6 +40,7 @@ export function startInviteHandler(
 		try {
 			const projectId = await inviteApi.accept({ inviteId })
 			log('Accepted invite %s → joined project %s', inviteId, projectId)
+			await onProjectJoined?.(projectId)
 		} catch (err) {
 			// These are all expected idempotent-failure scenarios; log but don't crash.
 			const message = err instanceof Error ? err.message : String(err)

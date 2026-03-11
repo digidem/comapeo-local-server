@@ -304,3 +304,17 @@ All tasks complete. To deploy:
   - `cp .env.example .env && timeout 20s bun start` → `.env` loaded and config passed; later failed at LAN discovery socket bind with sandbox `listen EPERM`, which is separate from env loading
 - Decision: runtime startup should load `.env` itself instead of relying on package-manager-specific env-file behavior
 - Next handoff: copied `.env.example` should now be enough for a local demo boot; use explicit overrides only for non-demo device names or storage paths
+
+- Task: keep project exchange always on for joined projects
+- Status: complete
+- Reason: the daemon accepted invites and discovered peers, but it never enabled per-project `$sync`, so it would not automatically exchange when another project device started syncing
+- Changes:
+  - added `src/daemon/sync.ts` with joined-project reconciliation that calls `manager.listProjects()` and enables `$sync.start()` for every `joined` project
+  - updated `src/daemon/index.ts` to run that reconciliation during startup before reporting `READY`
+  - updated `src/daemon/invites.ts` so successful invite acceptance can trigger post-join sync reconciliation immediately
+  - added `test/sync.test.ts` and expanded `test/invites.test.ts` to cover boot reconciliation and invite-to-sync callback behavior
+- Checks run:
+  - `npm test` → 38/38 passed
+  - `npm run typecheck` → clean
+- Decision: keep sync enablement as an idempotent daemon concern rather than mirroring the desktop exchange-screen lifecycle, so the headless node remains ready to exchange whenever any peer starts
+- Next handoff: if the daemon later gains project creation or leave automation outside invite acceptance, call the same joined-project reconciliation after those flows too
