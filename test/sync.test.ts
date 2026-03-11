@@ -106,10 +106,46 @@ describe('enableSyncForJoinedProjects', () => {
 		const source = `    } else if (
       peerState.status === 'started' &&
       state[namespace].localState.want === 0
-    ) {`
+    ) {
+        } else if (isDataSyncEnabled) {
+          const arePresyncNamespacesSynced = PRESYNC_NAMESPACES.every(
+            (ns) => this.#syncStatus[ns] === 'synced'
+          )
+          // Only enable data namespaces once the pre-sync namespaces have synced
+          if (arePresyncNamespacesSynced) {
+            this.#enableNamespace(ns)
+          }
+        } else {
+          this.#disableNamespace(ns)
+        }`
 
 		expect(patchPeerSyncControllerSource(source)).toContain(
 			'peerState.wanted === 0',
 		)
+	})
+
+	it('patches data gating so data waits for auth/config and blob waits for blobIndex', () => {
+		const source = `    } else if (
+      peerState.status === 'started' &&
+      state[namespace].localState.want === 0
+    ) {
+        } else if (isDataSyncEnabled) {
+          const arePresyncNamespacesSynced = PRESYNC_NAMESPACES.every(
+            (ns) => this.#syncStatus[ns] === 'synced'
+          )
+          // Only enable data namespaces once the pre-sync namespaces have synced
+          if (arePresyncNamespacesSynced) {
+            this.#enableNamespace(ns)
+          }
+        } else {
+          this.#disableNamespace(ns)
+        }`
+
+		const patched = patchPeerSyncControllerSource(source)
+		expect(patched).toContain("this.#syncStatus.auth === 'synced'")
+		expect(patched).toContain("this.#syncStatus.config === 'synced'")
+		expect(patched).toContain("this.#syncStatus.blobIndex === 'synced'")
+		expect(patched).toContain("if (ns === 'data')")
+		expect(patched).toContain("} else if (ns === 'blob')")
 	})
 })

@@ -349,3 +349,16 @@ All tasks complete. To deploy:
   - `npm run typecheck` → clean
 - Decision: carry a reproducible local patch to `@comapeo/core` in this repo instead of relying on manual `node_modules` edits, because the bug is in dependency sync gating rather than headless daemon wiring
 - Next handoff: rerun the daemon and confirm the new `comapeo:sync` logs show remote peers eventually switching `data(enabled=true)` after presync completion
+
+- Task: refine the local sync patch so `data` does not wait on `blobIndex`
+- Status: complete
+- Reason: the new daemon-side logs showed full sync enabled globally, but per-peer state still stalled at `initial(enabled=true, wanted=1)` while `data(enabled=false, wanted=2)`, which indicates `blobIndex` was still blocking `data` even after `auth` and `config` had synced
+- Changes:
+  - updated `scripts/apply-comapeo-core-sync-patch.mjs` so patched `peer-sync-controller.js` enables `data` once `auth` and `config` are synced, while keeping `blob` gated on `blobIndex`
+  - expanded `test/sync.test.ts` to cover the refined patch transform
+- Checks run:
+  - `node scripts/apply-comapeo-core-sync-patch.mjs`
+  - `npm test` → 41/41 passed
+  - `npm run typecheck` → clean
+- Decision: treat `blobIndex` as a prerequisite for `blob` sync only, not for `data` sync, because the observed stall was preventing all exchange even after the project membership/config presync had completed
+- Next handoff: rerun with the updated patch and confirm the logs progress from `data(enabled=false, wanted=2)` to `data(enabled=true, ...)` soon after `auth` and `config` settle
