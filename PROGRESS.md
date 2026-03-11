@@ -286,3 +286,21 @@ All tasks complete. To deploy:
   - `node --run start:smoke`
 - Decision: `main` is the Docker-free v1 branch; container support is not documented or shipped from this branch
 - Next handoff: keep Docker and Compose work isolated to `wip/docker-discovery-investigation` and do release/tagging work only after both branches are clean
+
+## Runtime follow-ups
+
+- Task: make `bun start` work from a copied `.env.example` without manual env exports
+- Status: complete
+- Reason: the daemon validated `process.env` only, so `bun start` could still fail on a copied `.env` because the Node entrypoint never loaded that file itself; `.env.example` also still used the old Docker-style `/data` path instead of the host-Node default
+- Changes:
+  - `src/config/index.ts` now exports `loadDefaultEnvFile()` and uses `./data` as the default data dir for host-node runs
+  - `src/daemon/index.ts` now loads `.env` before config validation
+  - `.env.example` now provides demo-safe defaults for `COMAPEO_DEVICE_NAME` and `COMAPEO_DATA_DIR`
+  - `README.md` now documents `cp .env.example .env` followed by `bun start`
+  - `test/config.test.ts` now verifies both the `./data` default and `.env` file loading
+- Checks run:
+  - `npm test`
+  - `npm run typecheck`
+  - `cp .env.example .env && timeout 20s bun start` → `.env` loaded and config passed; later failed at LAN discovery socket bind with sandbox `listen EPERM`, which is separate from env loading
+- Decision: runtime startup should load `.env` itself instead of relying on package-manager-specific env-file behavior
+- Next handoff: copied `.env.example` should now be enough for a local demo boot; use explicit overrides only for non-demo device names or storage paths

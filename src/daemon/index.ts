@@ -1,6 +1,6 @@
 import debug from 'debug'
 
-import { loadConfig } from '../config/index.js'
+import { loadConfig, loadDefaultEnvFile } from '../config/index.js'
 import { loadOrCreateRootKey } from '../config/root-key.js'
 import { initCore } from '../core/index.js'
 import { configureLogging } from '../logging/index.js'
@@ -10,6 +10,7 @@ const log = debug('comapeo:daemon')
 
 async function main() {
 	// ── Config ────────────────────────────────────────────────────────────────
+	loadDefaultEnvFile()
 	const config = loadConfig()
 	const activeDebugNamespaces = configureLogging(config.logLevel)
 	log(

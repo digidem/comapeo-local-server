@@ -47,3 +47,7 @@
 ## Release cleanup
 
 - [x] `[medium | gpt-5.3-codex]` Prepare `main` for the v1 host-Node release by removing Docker artifacts, removing Docker-only readiness wiring, and adding a clear README for direct Node deployment. Output: Docker-free `main`, README, and verification notes in `PROGRESS.md`.
+
+## Runtime follow-ups
+
+- [x] `[low | gpt-5.3-codex]` Make local `.env` bootstrapping work for `bun start` and align demo defaults with the host-Node release. Output: startup loads `.env` automatically, `.env.example` is demo-ready, and verification notes are recorded in `PROGRESS.md`.

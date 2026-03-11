@@ -1,6 +1,9 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { describe, it, expect } from 'vitest'
 
-import { loadConfig } from '../src/config/index.js'
+import { loadConfig, loadDefaultEnvFile } from '../src/config/index.js'
 
 describe('loadConfig', () => {
 	it('throws when COMAPEO_DEVICE_NAME is missing', () => {
@@ -17,7 +20,7 @@ describe('loadConfig', () => {
 	it('returns defaults for optional fields', () => {
 		const config = loadConfig({ COMAPEO_DEVICE_NAME: 'my-device' })
 		expect(config.deviceName).toBe('my-device')
-		expect(config.dataDir).toBe('/data')
+		expect(config.dataDir).toBe('./data')
 		expect(config.autoAcceptInvites).toBe(true)
 		expect(config.deviceType).toBe('desktop')
 		expect(config.logLevel).toBe('info')
@@ -104,5 +107,29 @@ describe('loadConfig', () => {
 	it('reads LOG_LEVEL from env', () => {
 		const config = loadConfig({ COMAPEO_DEVICE_NAME: 'dev', LOG_LEVEL: 'debug' })
 		expect(config.logLevel).toBe('debug')
+	})
+
+	it('loads COMAPEO_DEVICE_NAME from a local .env file', () => {
+		const tempDir = mkdtempSync(path.join(tmpdir(), 'comapeo-headless-env-'))
+		const previousValue = process.env.COMAPEO_DEVICE_NAME
+
+		try {
+			writeFileSync(
+				path.join(tempDir, '.env'),
+				'COMAPEO_DEVICE_NAME=env-file-device\n',
+			)
+			delete process.env.COMAPEO_DEVICE_NAME
+
+			loadDefaultEnvFile(tempDir)
+
+			expect(loadConfig().deviceName).toBe('env-file-device')
+		} finally {
+			if (previousValue === undefined) {
+				delete process.env.COMAPEO_DEVICE_NAME
+			} else {
+				process.env.COMAPEO_DEVICE_NAME = previousValue
+			}
+			rmSync(tempDir, { recursive: true, force: true })
+		}
 	})
 })

@@ -37,7 +37,8 @@ Optional:
 Development:
 
 ```bash
-COMAPEO_DEVICE_NAME=my-device node --run start
+cp .env.example .env
+bun start
 ```
 
 Smoke test:
@@ -52,6 +53,9 @@ Production build:
 npm run build
 COMAPEO_DEVICE_NAME=my-device node --run start:prod
 ```
+
+When `.env` exists, the daemon loads it automatically on startup. Copying
+`.env.example` to `.env` is enough for a local demo service.
 
 ## Deployment
 
