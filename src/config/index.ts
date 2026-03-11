@@ -1,6 +1,9 @@
+import { existsSync } from 'node:fs'
+import path from 'node:path'
 import * as v from 'valibot'
 
 const OPTIONAL_EMPTY_AS_UNSET = ['COMAPEO_ROOT_KEY', 'ONLINE_STYLE_URL'] as const
+const DEFAULT_ENV_FILE_NAME = '.env'
 
 // Env var names mapped to typed, validated Config fields.
 const EnvSchema = v.object({
@@ -8,7 +11,7 @@ const EnvSchema = v.object({
 		v.string('COMAPEO_DEVICE_NAME must be a string'),
 		v.minLength(1, 'COMAPEO_DEVICE_NAME is required and must not be empty'),
 	),
-	COMAPEO_DATA_DIR: v.optional(v.string(), '/data'),
+	COMAPEO_DATA_DIR: v.optional(v.string(), './data'),
 	COMAPEO_ROOT_KEY: v.optional(
 		v.pipe(
 			v.string(),
@@ -41,6 +44,14 @@ export type Config = {
 	deviceType: string
 	onlineStyleUrl?: string
 	logLevel: string
+}
+
+export function loadDefaultEnvFile(cwd = process.cwd()): void {
+	const envFilePath = path.join(cwd, DEFAULT_ENV_FILE_NAME)
+
+	if (!existsSync(envFilePath)) return
+
+	process.loadEnvFile(envFilePath)
 }
 
 function normalizeEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {

@@ -1,20 +1,22 @@
 import debug from 'debug'
 
-import { loadConfig } from '../config/index.js'
+import { loadConfig, loadDefaultEnvFile } from '../config/index.js'
 import { loadOrCreateRootKey } from '../config/root-key.js'
 import { initCore } from '../core/index.js'
 import { configureLogging } from '../logging/index.js'
 import { startInviteHandler } from './invites.js'
+import { enableSyncForJoinedProjects, startAlwaysOnSync } from './sync.js'
 import { markReady, clearReady } from './ready.js'
 
 const log = debug('comapeo:daemon')
 
 async function main() {
 	// ── Config ────────────────────────────────────────────────────────────────
+	loadDefaultEnvFile()
 	const config = loadConfig()
 	const activeDebugNamespaces = configureLogging(config.logLevel)
 	log(
-		'Starting CoMapeo headless daemon: logLevel=%s debug=%s',
+		'Starting CoMapeo local-server daemon: logLevel=%s debug=%s',
 		config.logLevel,
 		activeDebugNamespaces || '(disabled)',
 	)
@@ -26,12 +28,14 @@ async function main() {
 
 	// ── Core bootstrap ────────────────────────────────────────────────────────
 	const core = await initCore(config, rootKey)
+	const alwaysOnSync = startAlwaysOnSync(core.manager)
 	log('Core ready – daemon is fully started')
 
 	// ── Invite handler ────────────────────────────────────────────────────────
 	const inviteHandler = startInviteHandler(
 		core.manager.invite,
 		config.autoAcceptInvites,
+		() => enableSyncForJoinedProjects(core.manager),
 	)
 
 	// Signal readiness: stdout marker for smoke tests + file marker for Docker healthcheck.
@@ -44,6 +48,7 @@ async function main() {
 			log('Received %s, shutting down', signal)
 			clearReady(config.dataDir)
 			inviteHandler.stop()
+			alwaysOnSync.stop()
 			await core.stop()
 			resolve()
 		}
