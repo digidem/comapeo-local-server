@@ -1,0 +1,3 @@
+{
+	"*.{js,mjs,cjs,ts,mts,cts}": "eslint --cache --cache-strategy content --max-warnings 0 --no-warn-ignored"
+}

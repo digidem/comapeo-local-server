@@ -62,3 +62,13 @@ Once these fixes are released in `@comapeo/core`, this script can be removed.
 **Purpose:** Smoke test for verifying daemon functionality.
 
 Runs a quick end-to-end test of the daemon to ensure basic functionality works correctly.
+
+## check-staged-secrets.mjs
+
+**Purpose:** Runs `gitleaks` against staged git changes for the pre-commit hook.
+
+The script fails fast with a clear message when `gitleaks` is not installed locally.
+
+## prepare-husky.mjs
+
+**Purpose:** Installs Husky hooks during `npm install` when the repo has a `.git` directory and Husky is available.

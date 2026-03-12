@@ -168,9 +168,21 @@ comapeo-local-server/
 Contributions are welcome! Please ensure all tests pass and type checking completes before submitting a pull request.
 
 ```bash
+npm run lint:ci
 npm test
 npm run typecheck
+gitleaks git --no-banner --no-color --redact --exit-code 1 .
 ```
+
+## Guardrails
+
+- `npm install` installs the local Husky hook.
+- Pre-commit runs `gitleaks` on staged changes and ESLint on staged source files.
+- CI runs `lint`, `typecheck`, `test`, and `gitleaks` for pull requests and pushes to `main`.
+
+## Local Prerequisite
+
+`gitleaks` must be available on `PATH` for the pre-commit hook to pass.
 
 ## License
 

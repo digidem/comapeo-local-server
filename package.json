@@ -16,11 +16,17 @@
 		}
 	},
 	"scripts": {
+		"prepare": "node scripts/prepare-husky.mjs",
 		"postinstall": "node scripts/apply-comapeo-core-sync-patch.mjs",
 		"start": "node --import tsx/esm src/daemon/index.ts",
 		"start:prod": "node dist/daemon/index.js",
 		"start:smoke": "node --import tsx/esm scripts/smoke.ts",
 		"build": "tsc -p tsconfig.build.json",
+		"lint": "eslint . --cache --cache-strategy content",
+		"lint:ci": "eslint . --cache --cache-strategy content --max-warnings 0",
+		"gitleaks": "gitleaks git --no-banner --no-color --redact --exit-code 1 .",
+		"gitleaks:staged": "node scripts/check-staged-secrets.mjs",
+		"precommit": "node --run gitleaks:staged && lint-staged",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
@@ -34,10 +40,16 @@
 		"valibot": "1.2.0"
 	},
 	"devDependencies": {
+		"@eslint/js": "^10.0.1",
 		"@types/debug": "4.1.12",
 		"@types/node": "24.10.13",
+		"eslint": "^10.0.3",
+		"globals": "^17.4.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.3.3",
 		"tsx": "4.19.3",
 		"typescript": "5.9.3",
+		"typescript-eslint": "^8.57.0",
 		"vitest": "4.0.18"
 	},
 	"overrides": {

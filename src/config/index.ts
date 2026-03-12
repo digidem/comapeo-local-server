@@ -80,8 +80,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 		if (v.isValiError(err)) {
 			const messages = err.issues
 				.map((issue) => {
-					const field = issue.path?.[0]?.key ?? 'unknown field'
-					return `${field}: ${issue.message}`
+					const field = issue.path?.[0]?.key
+					const fieldName =
+						typeof field === 'string' || typeof field === 'number'
+							? String(field)
+							: 'unknown field'
+					return `${fieldName}: ${issue.message}`
 				})
 				.join('; ')
 			throw new Error(`Config validation failed: ${messages}`)
